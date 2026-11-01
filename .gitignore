@@ -9,3 +9,5 @@ vite.config.d.ts
 test-results/
 playwright-report/
 .playwright-browsers/
+.vercel
+.env*
