@@ -71,9 +71,9 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .pet-avatar { transform-origin: center bottom; animation: pet-breathe 2.6s ease-in-out infinite; }
 .pet-float { animation: pet-float 3.2s ease-in-out infinite; }
 .pet-celebrate { animation: pet-celebrate .7s ease-in-out infinite alternate; }
-.hero-ice::before, .hero-ice::after { content: ''; position: absolute; border-radius: 999px; background: rgba(255,255,255,.6); filter: blur(2px); }
-.hero-ice::before { left: 4%; top: 20%; width: 80px; height: 22px; }
-.hero-ice::after { right: 5%; top: 44%; width: 110px; height: 28px; }
+.hero-world::before, .hero-world::after { content: ''; position: absolute; border-radius: 999px; background: rgba(255,253,238,.72); filter: blur(2px); }
+.hero-world::before { left: 4%; top: 20%; width: 80px; height: 22px; }
+.hero-world::after { right: 5%; top: 44%; width: 110px; height: 28px; }
 
 .cloud { position: absolute; height: 25px; width: 90px; border-radius: 999px; background: rgba(255,255,255,.78); filter: blur(.2px); }
 .cloud::before, .cloud::after { content: ''; position: absolute; bottom: 0; border-radius: 50%; background: inherit; }
@@ -103,7 +103,7 @@ input[type='range'] { width: 100%; height: 6px; border-radius: 999px; }
 
 @media (max-width: 640px) {
   .page-shell { padding-top: 1rem; }
-  .hero-ice { height: 340px; }
+  .hero-world { height: 340px; }
   .game-scene { min-height: 280px; }
   .primary-button { width: 100%; }
 }

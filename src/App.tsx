@@ -17,7 +17,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { GameScene } from './components/GameScene';
-import type { CanvasPerformance } from './components/ArcticCanvas';
+import type { CanvasPerformance } from './components/RitualCanvas';
 import { MetricRing } from './components/MetricRing';
 import { PetAvatar } from './components/PetAvatar';
 import { PoseOverlay } from './components/PoseOverlay';
@@ -396,7 +396,7 @@ function App() {
               Get better<br /><span className="text-[#ef8c8c]">together.</span>
             </h1>
             <p className="mt-6 max-w-lg text-lg font-medium leading-8 text-[#607188]">
-              Turn your pet into a playful exercise buddy and cross the ice, one comfortable shoulder movement at a time.
+              Turn your pet into a playful exercise buddy and carry warmth around a tiny world, one comfortable shoulder movement at a time.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
               <button className="primary-button" onClick={() => setStep('pet')}>Meet your buddy <ArrowRight size={19} /></button>
@@ -406,14 +406,14 @@ function App() {
               <span>✓ No account</span><span>✓ 60-second challenge</span><span>✓ Demo mode included</span>
             </div>
           </section>
-          <section className="hero-ice relative mx-auto grid h-[480px] w-full max-w-[500px] place-items-center">
+          <section className="hero-world relative mx-auto grid h-[480px] w-full max-w-[500px] place-items-center">
             <div className="absolute inset-12 rounded-full bg-white/50 blur-3xl" />
             <div className="relative pet-float">
               <PetAvatar pet={demoPet} size="lg" />
               <div className="absolute -right-20 top-0 rotate-6 rounded-2xl border border-white bg-white/85 px-4 py-3 text-sm font-black shadow-xl backdrop-blur">Let’s move! ✨</div>
             </div>
-            <div className="absolute bottom-8 h-24 w-[80%] rounded-[50%] border-t-8 border-white bg-[#b9ecf7] shadow-[0_15px_0_#74bfd2,0_30px_50px_rgba(66,127,166,.25)]" />
-            <div className="absolute bottom-40 left-10 text-4xl snow-drift">❄</div>
+            <div className="absolute bottom-8 h-36 w-[88%] rounded-[50%] border-t-8 border-[#f7edcf] bg-[#9dc69c] shadow-[0_17px_0_#6ea18a,0_30px_50px_rgba(71,113,90,.24)]" />
+            <div className="absolute bottom-40 left-10 text-4xl snow-drift">☕</div>
             <div className="absolute right-10 top-16 text-3xl snow-drift" style={{ animationDelay: '.8s' }}>✦</div>
           </section>
         </main>
@@ -502,7 +502,7 @@ function App() {
       {step === 'game' && (
         <main className="mx-auto max-w-6xl px-5 pb-10 pt-3 sm:px-8">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div><p className="text-xs font-black uppercase tracking-[.16em] text-[#77a3aa]">Ice island challenge · {biomeForSeed(sessionSeed).name}</p><h1 className="font-display text-3xl font-black">Reach, lower, hop!</h1></div>
+            <div><p className="text-xs font-black uppercase tracking-[.16em] text-[#739187]">Morning warmth route · {biomeForSeed(sessionSeed).name}</p><h1 className="font-display text-3xl font-black">Reach, lower, deliver!</h1></div>
             <div className="flex gap-2">
               <button className={`small-toggle ${ghostMode ? 'small-toggle-on' : ''}`} onClick={() => setGhostMode((value) => !value)}><Ghost size={16} /> Ghost</button>
               <button className="small-toggle" onClick={resetSession}><RotateCcw size={16} /> Reset</button>
@@ -523,8 +523,8 @@ function App() {
               />
               <div className="mt-4 rounded-2xl border border-white/80 bg-white/65 p-4 shadow-sm backdrop-blur">
                 <div className="flex items-center gap-3">
-                  <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl ${feedback?.type === 'TRUNK_DEVIATION' || feedback?.type === 'TRACKING_LOST' ? 'bg-[#fff1e3]' : 'bg-[#e4f8f2]'}`}>{feedback?.type === 'REP_COMPLETED' ? '⭐' : feedback?.type === 'SESSION_COMPLETED' ? '🏝️' : '🐾'}</span>
-                  <div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#83a0aa]">{feedback?.type.replaceAll('_', ' ') ?? 'COACH'}</p><p className="font-bold text-[#43546c]">{feedback?.message ?? 'Ready when you are.'}</p></div>
+                  <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl ${feedback?.type === 'TRUNK_DEVIATION' || feedback?.type === 'TRACKING_LOST' ? 'bg-[#fff1e3]' : 'bg-[#e4f8f2]'}`}>{feedback?.type === 'REP_COMPLETED' ? '⭐' : feedback?.type === 'SESSION_COMPLETED' ? '🏘️' : '🐾'}</span>
+                  <div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.15em] text-[#83a0aa]">{feedback?.type.replaceAll('_', ' ') ?? 'COACH'}</p><p className="font-bold text-[#43546c]">{feedback?.message ?? 'The first doorstep is waiting.'}</p></div>
                   <div className="hidden items-center gap-1 sm:flex">{[1, 2, 3].map((rep) => <span key={rep} className={`grid h-8 w-8 place-items-center rounded-full text-sm font-black ${reps >= rep ? 'bg-[#ffd66e] text-[#725415]' : 'bg-[#e5edf1] text-[#97a6b3]'}`}>{reps >= rep ? '★' : rep}</span>)}</div>
                 </div>
               </div>
@@ -556,6 +556,7 @@ function App() {
               <div className="glass-card p-4">
                 <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-[#8798aa]"><span>Target</span><span>{targetAngle}°</span></div>
                 <div className="mt-2 h-3 overflow-hidden rounded-full bg-[#dfecef]"><div className="h-full rounded-full bg-gradient-to-r from-[#68c7c9] to-[#85d9ba] transition-all duration-200" style={{ width: `${Math.min(100, (metrics.armAngle / targetAngle) * 100)}%` }} /></div>
+                <p className="mt-3 rounded-xl bg-[#f8f1df] px-3 py-2 text-center text-[10px] font-black uppercase tracking-[.11em] text-[#796e5b]">Raise to walk · hold to arrive · lower to deliver</p>
                 <p className="mt-3 text-xs leading-5 text-[#8192a4]">Estimated from shoulder, elbow and hip landmarks. Not a medical measurement.</p>
                 <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t border-[#e3edf0] pt-3 text-[10px] font-black uppercase tracking-wider text-[#91a1ae]">
                   <span>{canvasPerformance.fps || '—'} FPS</span>
@@ -573,9 +574,9 @@ function App() {
         <main className="page-shell">
           <section className="mx-auto max-w-4xl text-center">
             <div className="relative mx-auto w-fit"><div className="absolute inset-0 scale-150 rounded-full bg-[#ffe798]/40 blur-2xl" /><PetAvatar pet={pet} size="lg" celebrating /></div>
-            <div className="eyebrow mx-auto mt-5"><Trophy size={15} /> Adventure complete</div>
-            <h1 className="page-title">You made it to the island!</h1>
-            <p className="page-subtitle">Three thoughtful movements carried {pet.name} across {summary.biome ?? 'the ice'}.</p>
+            <div className="eyebrow mx-auto mt-5"><Trophy size={15} /> Morning ritual complete</div>
+            <h1 className="page-title">The little world is glowing!</h1>
+            <p className="page-subtitle">Three thoughtful movements helped {pet.name} deliver warmth across {summary.biome ?? 'the village'}.</p>
           </section>
           <section className="mx-auto mt-8 grid max-w-4xl gap-4 sm:grid-cols-3">
             <SummaryCard icon="⭐" value={summary.reps} label="Repetitions" note="Completed" />

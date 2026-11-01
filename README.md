@@ -2,7 +2,7 @@
 
 **Get better together.**
 
-Pawgress is a playful home rehabilitation companion built as a four-hour solo hackathon MVP. A user chooses a photo of their pet, uses local webcam pose tracking (or instant demo controls), and helps their buddy cross three ice platforms by completing three shoulder raise-and-lower cycles.
+Pawgress is a playful home rehabilitation companion built as a four-hour solo hackathon MVP. A user chooses a photo of their pet, uses local webcam pose tracking (or instant demo controls), and helps their buddy carry warmth around a tiny curved world by completing three shoulder raise-and-lower cycles.
 
 The complete demo flow takes under 60 seconds and works without a camera, account, database, or API key.
 
@@ -35,14 +35,14 @@ npm run test:e2e
 2. Keep **Mochi — Bundled demo** selected and choose **Hatch My Pet**.
 3. Select **Use instant demo**.
 4. Press **Complete a demo rep** three times.
-5. Watch Mochi reach the island and review the saved session summary.
+5. Watch Mochi light the whole village and review the saved session summary.
 
 Demo angles and trunk movement are visibly labelled **Simulated data**. Demo mode runs through the same rep state machine and feedback event boundaries as camera mode.
 
 ## What was built during the hackathon
 
 - Five-step responsive experience: welcome, pet selection, calibration, exercise game, summary.
-- Canvas-rendered arctic expedition with four seeded biomes, shared water/platform physics, parallax scenery, snow, ripples, earned stars, and celebration effects.
+- Canvas-rendered miniature world inspired by the cozy ritual and curved-horizon composition of OpenAI's Little Ritual showcase, with original procedural art, four seeded neighborhoods, a winding globe route, lit destinations, earned stars, and celebration effects.
 - Validated PNG/JPEG/WebP pet image import (5 MB maximum) with local object URLs; images are not uploaded.
 - Clearly labelled bundled Mochi fallback.
 - MediaPipe Pose Landmarker loaded only after camera opt-in; webcam frames remain local.
@@ -51,7 +51,7 @@ Demo angles and trunk movement are visibly labelled **Simulated data**. Demo mod
 - Deterministic rep state machine with hysteresis, target hold, a complete return phase, and exactly one reward per rep.
 - Typed feedback events: `START`, `TARGET_REACHED`, `TRUNK_DEVIATION`, `TRACKING_LOST`, `REP_COMPLETED`, and `SESSION_COMPLETED`.
 - Browser speech synthesis queue with no overlapping utterances and a mute control.
-- Phase-aware pet animation: anticipate, charge, leap, land, idle, and celebrate. Uploaded photos use the same animated sticker rig.
+- Phase-aware pet animation: anticipate, walk, arrive, deliver, idle, and celebrate. Uploaded photos use the same animated sticker rig.
 - Web Audio ambience and event chimes with a shared mute control alongside queued speech.
 - Ghost Mode segments prior camera recordings into repetitions, selects a strong personal reference, normalizes it to movement phase, and replays a translucent motion trail.
 - Live performance counters for Canvas FPS, average and p95 frame time, particle load, MediaPipe inference time, and dropped camera frames.
@@ -75,7 +75,7 @@ src/
   dev/                 development-only inspection bridge
   game/                deterministic feedback and rep state machine
   services/            audio, voice, storage, optional decision adapter
-  simulation/          seeded expedition, animation, water, springs, particles
+  simulation/          seeded journey, curved route, animation, particles
   tracking/            MediaPipe lifecycle, pose math, normalized ghost replay
   types.ts             shared domain contracts
   App.tsx              flow orchestration and event boundaries
@@ -91,11 +91,11 @@ The whole repetition now controls the adventure instead of only its completion e
 | Rep state | Expedition response |
 | --- | --- |
 | Ready | Pet idles and watches the route |
-| Raising | Pet anticipates; the scene charges with spark particles |
-| Target held | Pet launches toward the next stop |
-| Lowering | Pet continues through its jump arc |
-| Reset reached | Water ripples, the platform springs, and one star is awarded |
-| Session complete | The pet celebrates on the island |
+| Raising | Pet walks farther around the globe as the arm rises |
+| Target held | Pet reaches the next glowing doorstep |
+| Lowering | Pet waits at the destination for the delivery |
+| Reset reached | One destination lights and one star is awarded |
+| Session complete | The whole village glows and the pet celebrates |
 
 The visuals never reward exceeding the selected target, penalize limited range, or change the user's target automatically.
 
@@ -140,7 +140,7 @@ At each feedback boundary, the browser sends this non-credential payload to your
     "id": "REP_COMPLETED-1234-1",
     "type": "REP_COMPLETED",
     "timestamp": 1234,
-    "message": "Nice work! One ice hop closer.",
+    "message": "Delivery complete! The little world is getting warmer.",
     "rep": 1,
     "metrics": { "armAngle": 20, "trunkLean": 1.2 }
   }

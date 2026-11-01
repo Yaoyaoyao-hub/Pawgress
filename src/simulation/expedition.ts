@@ -61,7 +61,7 @@ export interface ExpeditionState {
 export const BIOMES: Biome[] = [
   {
     id: 'aurora-bay',
-    name: 'Aurora Bay',
+    name: 'Lantern Bay',
     skyTop: '#bcebf3',
     skyBottom: '#f3fbff',
     waterTop: '#62bfd3',
@@ -72,7 +72,7 @@ export const BIOMES: Biome[] = [
   },
   {
     id: 'crystal-floes',
-    name: 'Crystal Floes',
+    name: 'Glassgarden',
     skyTop: '#cabff2',
     skyBottom: '#eef7ff',
     waterTop: '#79a9d9',
@@ -83,7 +83,7 @@ export const BIOMES: Biome[] = [
   },
   {
     id: 'seal-cove',
-    name: 'Snowy Seal Cove',
+    name: 'Clover Cove',
     skyTop: '#ffd9ce',
     skyBottom: '#f4fbff',
     waterTop: '#77c9cf',
@@ -94,7 +94,7 @@ export const BIOMES: Biome[] = [
   },
   {
     id: 'moonlit-glacier',
-    name: 'Moonlit Glacier',
+    name: 'Moonrise Quarter',
     skyTop: '#374d79',
     skyBottom: '#a7cfe4',
     waterTop: '#4f82a7',
@@ -228,7 +228,9 @@ export function stepExpedition(
     ? 3
     : input.phase === 'target' || input.phase === 'lowering'
       ? Math.min(3, input.reps + 1)
-      : input.reps;
+      : input.phase === 'raising'
+        ? Math.min(3, input.reps + charge * 0.78)
+        : input.reps;
   const difference = targetProgress - state.petProgress;
   const petProgress = Math.abs(difference) < 0.005
     ? targetProgress

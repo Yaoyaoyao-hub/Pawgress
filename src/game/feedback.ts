@@ -1,12 +1,12 @@
 import type { FeedbackEvent, FeedbackEventType, MotionMetrics } from '../types';
 
 const messages: Record<FeedbackEventType, string> = {
-  START: 'Adventure started. Move in a way that feels comfortable.',
-  TARGET_REACHED: 'Beautiful reach! Now lower gently.',
+  START: 'The morning route is open. Move in a way that feels comfortable.',
+  TARGET_REACHED: 'You reached the next doorstep! Now lower gently to deliver.',
   TRUNK_DEVIATION: 'Try keeping your body tall and steady.',
   TRACKING_LOST: 'I lost sight of you. Step back into the frame.',
-  REP_COMPLETED: 'Nice work! One ice hop closer.',
-  SESSION_COMPLETED: 'You made it to the island. Great teamwork!',
+  REP_COMPLETED: 'Delivery complete! The little world is getting warmer.',
+  SESSION_COMPLETED: 'Every light is glowing. Great teamwork!',
 };
 
 export function makeFeedbackEvent(
