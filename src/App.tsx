@@ -17,15 +17,20 @@ import {
   Upload,
 } from 'lucide-react';
 import { GameScene } from './components/GameScene';
+import type { CanvasPerformance } from './components/ArcticCanvas';
 import { MetricRing } from './components/MetricRing';
 import { PetAvatar } from './components/PetAvatar';
 import { PoseOverlay } from './components/PoseOverlay';
 import { ProgressHeader } from './components/ProgressHeader';
 import { FeedbackGate, makeFeedbackEvent } from './game/feedback';
-import { initialRepState, updateRepState } from './game/repMachine';
+import { initialRepState, updateRepState, type RepPhase } from './game/repMachine';
+import { installDebugBridge, type PawgressScene } from './dev/debugBridge';
+import { gameAudio } from './services/audio';
 import { requestDecision } from './services/decisionAdapter';
 import { clearSessions, loadSessions, saveSession } from './services/sessionStorage';
 import { voiceCoach } from './services/voice';
+import { biomeForSeed, hashSeed, type ExpeditionState } from './simulation/expedition';
+import { ghostTrailAtProgress, movementProgress, selectBestGhost } from './tracking/ghost';
 import { calculateMotionMetrics, smoothMetrics } from './tracking/poseMath';
 import { usePoseTracker } from './tracking/usePoseTracker';
 import type {
@@ -56,6 +61,7 @@ const stageForStep: Record<AppStep, number> = {
   game: 2,
   summary: 3,
 };
+const debugScenes: PawgressScene[] = ['ready', 'raising', 'target-hold', 'tracking-lost', 'trunk-feedback', 'final-leap'];
 
 function App() {
   const [step, setStep] = useState<AppStep>('welcome');
@@ -68,6 +74,7 @@ function App() {
   const [metrics, setMetrics] = useState<MotionMetrics>(emptyMetrics);
   const [landmarks, setLandmarks] = useState<Landmark[]>([]);
   const [reps, setReps] = useState(0);
+  const [repPhase, setRepPhase] = useState<RepPhase>('ready');
   const [feedback, setFeedback] = useState<FeedbackEvent | null>(null);
   const [completed, setCompleted] = useState(false);
   const [demoBusy, setDemoBusy] = useState(false);
@@ -75,6 +82,8 @@ function App() {
   const [ghostMode, setGhostMode] = useState(true);
   const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [sessionHistory, setSessionHistory] = useState<SessionSummary[]>(() => loadSessions());
+  const [sessionSeed, setSessionSeed] = useState(() => hashSeed('Mochi-first-adventure'));
+  const [canvasPerformance, setCanvasPerformance] = useState<CanvasPerformance>({ fps: 0, averageFrameMs: 0, p95FrameMs: 0, particleCount: 0 });
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const repStateRef = useRef(initialRepState());
@@ -87,6 +96,8 @@ function App() {
   const feedbackGateRef = useRef(new FeedbackGate());
   const finishedRef = useRef(false);
   const timersRef = useRef<number[]>([]);
+  const expeditionStateRef = useRef<ExpeditionState | null>(null);
+  const initialSceneLoadedRef = useRef(false);
 
   const config = useMemo<RepConfig>(
     () => ({ targetAngle, resetAngle: 30, trunkLimit: 15, targetHoldMs: 180, trackingConfidence: 0.55 }),
@@ -95,6 +106,7 @@ function App() {
 
   useEffect(() => {
     voiceCoach.setEnabled(!muted);
+    gameAudio.setEnabled(!muted);
   }, [muted]);
 
   useEffect(
@@ -106,6 +118,8 @@ function App() {
 
   const emitFeedback = useCallback((event: FeedbackEvent) => {
     setFeedback(event);
+    if (event.type === 'START') gameAudio.startAmbient();
+    gameAudio.play(event.type);
     voiceCoach.speak(event);
     void requestDecision(event).then((result) => {
       if (result.source === 'adapter' && result.message !== event.message) {
@@ -136,6 +150,8 @@ function App() {
           mode,
           petName: pet.name,
           durationSeconds: Math.max(1, Math.round((performance.now() - startTimeRef.current) / 1000)),
+          targetAngle,
+          biome: biomeForSeed(sessionSeed).name,
           recording: recordingRef.current,
         };
         saveSession(result);
@@ -145,7 +161,7 @@ function App() {
       }, 1500);
       timersRef.current.push(timer);
     },
-    [emitFeedback, mode, pet.name],
+    [emitFeedback, mode, pet.name, sessionSeed, targetAngle],
   );
 
   const processMotion = useCallback(
@@ -172,6 +188,7 @@ function App() {
 
       const update = updateRepState(repStateRef.current, smoothed, timestamp, config);
       repStateRef.current = update.state;
+      setRepPhase(update.state.phase);
       if (update.targetReachedNow) {
         emitFeedback(makeFeedbackEvent('TARGET_REACHED', timestamp, { metrics: smoothed }));
       }
@@ -214,20 +231,38 @@ function App() {
     setMetrics(emptyMetrics);
     setLandmarks([]);
     setReps(0);
+    setRepPhase('ready');
     setCompleted(false);
     setDemoBusy(false);
+    setSessionSeed(hashSeed(`${pet.name}-${Date.now()}`));
     const event = makeFeedbackEvent('START', performance.now());
     emitFeedback(event);
-  }, [emitFeedback]);
+  }, [emitFeedback, pet.name]);
 
-  const startGame = (inputMode: InputMode) => {
+  const startGame = useCallback((inputMode: InputMode) => {
+    gameAudio.unlock();
     setMode(inputMode);
     setStep('game');
     window.setTimeout(resetSession, 0);
-  };
+  }, [resetSession]);
 
-  const runDemoRep = () => {
+  const setDemoPose = useCallback((armAngle: number, trunkLean = 1.2, trackingValid = true, timestamp = performance.now()) => {
+    processMotion(
+      {
+        armAngle,
+        trunkLean,
+        confidence: trackingValid ? 1 : 0,
+        trackingValid,
+        side: 'left',
+      },
+      [],
+      timestamp,
+    );
+  }, [processMotion]);
+
+  const runDemoRep = useCallback(() => {
     if (demoBusy || completed) return;
+    gameAudio.unlock();
     setDemoBusy(true);
     const now = performance.now();
     const frames: Array<[number, number]> = [
@@ -240,12 +275,58 @@ function App() {
     ];
     frames.forEach(([delay, armAngle], index) => {
       const timer = window.setTimeout(() => {
-        processMotion({ armAngle, trunkLean: index === 1 ? 2.5 : 1.2, confidence: 1, trackingValid: true, side: 'left' }, [], now + delay);
+        setDemoPose(armAngle, index === 1 ? 2.5 : 1.2, true, now + delay);
         if (index === frames.length - 1) setDemoBusy(false);
       }, delay);
       timersRef.current.push(timer);
     });
-  };
+  }, [completed, demoBusy, setDemoPose, targetAngle]);
+
+  const loadDebugScene = useCallback((scene: PawgressScene) => {
+    setCameraEnabled(false);
+    setMode('demo');
+    setStep('game');
+    resetSession();
+    setSessionSeed(hashSeed(`debug-${scene}`));
+    const schedule = (delay: number, action: () => void) => {
+      const timer = window.setTimeout(action, delay);
+      timersRef.current.push(timer);
+    };
+    if (scene === 'ready') schedule(20, () => setDemoPose(20));
+    if (scene === 'raising') {
+      schedule(20, () => setDemoPose(20));
+      schedule(80, () => setDemoPose(62));
+    }
+    if (scene === 'target-hold') {
+      const now = performance.now();
+      schedule(20, () => setDemoPose(48, 1, true, now));
+      schedule(80, () => setDemoPose(targetAngle + 8, 1, true, now + 80));
+      schedule(300, () => setDemoPose(targetAngle + 10, 1, true, now + 300));
+    }
+    if (scene === 'tracking-lost') schedule(20, () => setDemoPose(0, 0, false));
+    if (scene === 'trunk-feedback') schedule(20, () => setDemoPose(52, 22));
+    if (scene === 'final-leap') {
+      repStateRef.current = { phase: 'raising', reps: 2, targetEnteredAt: null, targetReached: false };
+      setReps(2);
+      setRepPhase('raising');
+      const now = performance.now();
+      schedule(40, () => setDemoPose(targetAngle + 8, 1, true, now + 40));
+      schedule(280, () => setDemoPose(targetAngle + 10, 1, true, now + 280));
+      schedule(470, () => setDemoPose(55, 1, true, now + 470));
+      schedule(650, () => setDemoPose(20, 1, true, now + 650));
+    }
+  }, [resetSession, setDemoPose, targetAngle]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || initialSceneLoadedRef.current) return;
+    const scene = new URLSearchParams(window.location.search).get('scene');
+    if (!scene || !debugScenes.includes(scene as PawgressScene)) return;
+    const timer = window.setTimeout(() => {
+      initialSceneLoadedRef.current = true;
+      loadDebugScene(scene as PawgressScene);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadDebugScene]);
 
   const handleUpload = (file?: File) => {
     setUploadError('');
@@ -265,12 +346,36 @@ function App() {
     setPet({ name: fallbackName, imageUrl, kind: 'upload' });
   };
 
-  const ghostFrame = useMemo(() => {
-    const previous = sessionHistory.find((session) => session.id !== summary?.id && session.recording.some((frame) => frame.landmarks.length));
-    if (!ghostMode || !previous?.recording.length) return null;
-    const frameIndex = Math.min(previous.recording.length - 1, Math.floor((metrics.armAngle / 180) * previous.recording.length));
-    return previous.recording[frameIndex];
-  }, [ghostMode, metrics.armAngle, sessionHistory, summary?.id]);
+  const ghostReference = useMemo(
+    () => selectBestGhost(
+      sessionHistory
+        .filter((session) => session.id !== summary?.id && session.mode === 'camera')
+        .map((session) => session.recording),
+      targetAngle,
+      config.resetAngle,
+    ),
+    [config.resetAngle, sessionHistory, summary?.id, targetAngle],
+  );
+  const ghostProgress = movementProgress(repPhase, metrics.armAngle, targetAngle, config.resetAngle);
+  const ghostTrail = useMemo(
+    () => (ghostMode ? ghostTrailAtProgress(ghostReference, ghostProgress) : []),
+    [ghostMode, ghostProgress, ghostReference],
+  );
+
+  useEffect(() => installDebugBridge({
+    getState: () => ({
+      step,
+      reps,
+      phase: repPhase,
+      metrics,
+      expedition: expeditionStateRef.current,
+      canvasPerformance,
+      trackerPerformance: tracker.performance,
+    }),
+    setDemoPose: (armAngle, trunkLean) => setDemoPose(armAngle, trunkLean),
+    completeRep: runDemoRep,
+    loadScene: loadDebugScene,
+  }), [canvasPerformance, loadDebugScene, metrics, repPhase, reps, runDemoRep, setDemoPose, step, tracker.performance]);
 
   const previousSession = sessionHistory.find((session) => session.id !== summary?.id);
 
@@ -397,7 +502,7 @@ function App() {
       {step === 'game' && (
         <main className="mx-auto max-w-6xl px-5 pb-10 pt-3 sm:px-8">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div><p className="text-xs font-black uppercase tracking-[.16em] text-[#77a3aa]">Ice island challenge</p><h1 className="font-display text-3xl font-black">Reach, lower, hop!</h1></div>
+            <div><p className="text-xs font-black uppercase tracking-[.16em] text-[#77a3aa]">Ice island challenge · {biomeForSeed(sessionSeed).name}</p><h1 className="font-display text-3xl font-black">Reach, lower, hop!</h1></div>
             <div className="flex gap-2">
               <button className={`small-toggle ${ghostMode ? 'small-toggle-on' : ''}`} onClick={() => setGhostMode((value) => !value)}><Ghost size={16} /> Ghost</button>
               <button className="small-toggle" onClick={resetSession}><RotateCcw size={16} /> Reset</button>
@@ -405,7 +510,17 @@ function App() {
           </div>
           <div className="grid gap-6 lg:grid-cols-[1.45fr_.75fr]">
             <section>
-              <GameScene pet={pet} reps={reps} completed={completed} />
+              <GameScene
+                pet={pet}
+                reps={reps}
+                completed={completed}
+                phase={repPhase}
+                armAngle={metrics.armAngle}
+                targetAngle={targetAngle}
+                seed={sessionSeed}
+                onPerformance={setCanvasPerformance}
+                onState={(state) => { expeditionStateRef.current = state; }}
+              />
               <div className="mt-4 rounded-2xl border border-white/80 bg-white/65 p-4 shadow-sm backdrop-blur">
                 <div className="flex items-center gap-3">
                   <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-xl ${feedback?.type === 'TRUNK_DEVIATION' || feedback?.type === 'TRACKING_LOST' ? 'bg-[#fff1e3]' : 'bg-[#e4f8f2]'}`}>{feedback?.type === 'REP_COMPLETED' ? '⭐' : feedback?.type === 'SESSION_COMPLETED' ? '🏝️' : '🐾'}</span>
@@ -419,9 +534,10 @@ function App() {
                 <div className="glass-card p-3">
                   <div className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] bg-[#25364d]">
                     <video ref={videoRef} className="h-full w-full -scale-x-100 object-cover" playsInline muted />
-                    {ghostFrame && <PoseOverlay landmarks={ghostFrame.landmarks} ghost />}
+                    {ghostTrail.map((frame, index) => <PoseOverlay key={`${frame.timestamp}-${index}`} landmarks={frame.landmarks} ghost opacity={(index + 1) / (ghostTrail.length * 4.2)} />)}
                     <PoseOverlay landmarks={landmarks} />
                     <span className="absolute bottom-3 left-3 rounded-full bg-[#27384d]/75 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-white">Live · local</span>
+                    {ghostMode && <span className="absolute right-3 top-3 rounded-full bg-white/75 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-[#516778]">{ghostReference ? 'Personal reference' : 'No prior camera rep'}</span>}
                   </div>
                 </div>
               ) : (
@@ -441,6 +557,12 @@ function App() {
                 <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-[#8798aa]"><span>Target</span><span>{targetAngle}°</span></div>
                 <div className="mt-2 h-3 overflow-hidden rounded-full bg-[#dfecef]"><div className="h-full rounded-full bg-gradient-to-r from-[#68c7c9] to-[#85d9ba] transition-all duration-200" style={{ width: `${Math.min(100, (metrics.armAngle / targetAngle) * 100)}%` }} /></div>
                 <p className="mt-3 text-xs leading-5 text-[#8192a4]">Estimated from shoulder, elbow and hip landmarks. Not a medical measurement.</p>
+                <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t border-[#e3edf0] pt-3 text-[10px] font-black uppercase tracking-wider text-[#91a1ae]">
+                  <span>{canvasPerformance.fps || '—'} FPS</span>
+                  <span>P95 {canvasPerformance.p95FrameMs ? `${canvasPerformance.p95FrameMs.toFixed(1)}ms` : '—'}</span>
+                  <span>{canvasPerformance.particleCount} particles</span>
+                  {mode === 'camera' && <span>Pose {tracker.performance.inferenceMs ? `${tracker.performance.inferenceMs.toFixed(1)}ms` : 'warming up'}</span>}
+                </div>
               </div>
             </aside>
           </div>
@@ -453,7 +575,7 @@ function App() {
             <div className="relative mx-auto w-fit"><div className="absolute inset-0 scale-150 rounded-full bg-[#ffe798]/40 blur-2xl" /><PetAvatar pet={pet} size="lg" celebrating /></div>
             <div className="eyebrow mx-auto mt-5"><Trophy size={15} /> Adventure complete</div>
             <h1 className="page-title">You made it to the island!</h1>
-            <p className="page-subtitle">Three thoughtful movements, three icy hops, one proud teammate.</p>
+            <p className="page-subtitle">Three thoughtful movements carried {pet.name} across {summary.biome ?? 'the ice'}.</p>
           </section>
           <section className="mx-auto mt-8 grid max-w-4xl gap-4 sm:grid-cols-3">
             <SummaryCard icon="⭐" value={summary.reps} label="Repetitions" note="Completed" />

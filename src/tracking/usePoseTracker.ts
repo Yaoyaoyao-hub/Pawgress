@@ -3,6 +3,11 @@ import type { PoseLandmarker } from '@mediapipe/tasks-vision';
 import type { PoseFrame } from '../types';
 
 export type TrackerStatus = 'idle' | 'requesting' | 'loading-model' | 'ready' | 'error';
+export interface TrackerPerformance {
+  inferenceMs: number;
+  droppedFrames: number;
+  sampledFrames: number;
+}
 
 export function usePoseTracker(
   videoRef: React.RefObject<HTMLVideoElement>,
@@ -12,6 +17,7 @@ export function usePoseTracker(
 ) {
   const [status, setStatus] = useState<TrackerStatus>('idle');
   const [error, setError] = useState('');
+  const [trackerPerformance, setTrackerPerformance] = useState<TrackerPerformance>({ inferenceMs: 0, droppedFrames: 0, sampledFrames: 0 });
   const callbackRef = useRef(onFrame);
   callbackRef.current = onFrame;
 
@@ -28,6 +34,9 @@ export function usePoseTracker(
     let poseLandmarker: PoseLandmarker | null = null;
     let frameId = 0;
     let lastVideoTime = -1;
+    let inferenceTotal = 0;
+    let sampledFrames = 0;
+    let droppedFrames = 0;
 
     async function start() {
       try {
@@ -64,9 +73,21 @@ export function usePoseTracker(
           const video = videoElement;
           if (!cancelled && video && poseLandmarker) {
             if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+              const videoDelta = lastVideoTime < 0 ? 0 : video.currentTime - lastVideoTime;
               lastVideoTime = video.currentTime;
               const timestamp = performance.now();
+              const inferenceStarted = performance.now();
               const result = poseLandmarker.detectForVideo(video, timestamp);
+              inferenceTotal += performance.now() - inferenceStarted;
+              sampledFrames += 1;
+              if (videoDelta > 0.11) droppedFrames += Math.max(0, Math.round(videoDelta * 30) - 1);
+              if (sampledFrames % 20 === 0) {
+                setTrackerPerformance({
+                  inferenceMs: inferenceTotal / sampledFrames,
+                  droppedFrames,
+                  sampledFrames,
+                });
+              }
               if (result.landmarks[0]) callbackRef.current({ timestamp, landmarks: result.landmarks[0] });
             }
             frameId = requestAnimationFrame(detect);
@@ -91,5 +112,5 @@ export function usePoseTracker(
     };
   }, [enabled, videoRef, instanceKey]);
 
-  return { status, error };
+  return { status, error, performance: trackerPerformance };
 }

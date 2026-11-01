@@ -59,6 +59,8 @@ export interface SessionSummary {
   mode: InputMode;
   petName: string;
   durationSeconds: number;
+  targetAngle?: number;
+  biome?: string;
   recording: RecordedFrame[];
 }
 

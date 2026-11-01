@@ -22,13 +22,13 @@
 
 **Screen:** Click **Complete a demo rep** three times, leaving enough time to show each target and rep event. Focus on the pet hopping, platforms lighting, stars, meters, and feedback card.
 
-**Narration:** “Both live and demo input use the same deterministic state machine: raise above the target, hold, lower through a hysteresis band, then return. Each full cycle emits one reward—never two. Event-based voice coaching never overlaps, and tracking loss or trunk movement has deterministic feedback.”
+**Narration:** “Both live and demo input use the same deterministic state machine. Raising charges the world, the target hold launches the pet, and lowering carries the jump into a springy landing. Each full cycle emits one reward—never two. The Canvas expedition adds reactive water, particles, sound, and a different seeded biome without changing the safety logic.”
 
 ## 1:00–1:14 — Celebration and Ghost Mode
 
 **Screen:** Show the island celebration, then the summary transition. If a prior camera session exists, briefly mention the Ghost toggle.
 
-**Narration:** “Three successful reps bring your buddy to the island. Ghost Mode records timestamps, keypoints, and metrics so a prior local session can replay as a translucent reference skeleton.”
+**Narration:** “Three successful reps bring your buddy to the island. Ghost Mode segments a prior camera session into repetitions, selects a personal reference, and phase-matches a translucent motion trail with the live movement.”
 
 ## 1:14–1:26 — Results
 

@@ -10,11 +10,11 @@ const connections: [number, number][] = [
   [POSE.leftHip, POSE.rightHip],
 ];
 
-export function PoseOverlay({ landmarks, ghost = false }: { landmarks: Landmark[]; ghost?: boolean }) {
+export function PoseOverlay({ landmarks, ghost = false, opacity }: { landmarks: Landmark[]; ghost?: boolean; opacity?: number }) {
   if (landmarks.length === 0) return null;
   const visible = new Set(connections.flat());
   return (
-    <svg className={`absolute inset-0 h-full w-full -scale-x-100 ${ghost ? 'opacity-30' : ''}`} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+    <svg className="absolute inset-0 h-full w-full -scale-x-100" style={{ opacity: opacity ?? (ghost ? 0.3 : 1) }} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
       {connections.map(([from, to]) => {
         const a = landmarks[from];
         const b = landmarks[to];

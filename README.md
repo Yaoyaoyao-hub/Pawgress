@@ -22,6 +22,13 @@ npm test
 npm run build
 ```
 
+Install the pinned Playwright browser once, then run the browser journeys:
+
+```bash
+npm run test:e2e:install
+npm run test:e2e
+```
+
 ## Fast judge path
 
 1. Select **Meet your buddy**.
@@ -35,7 +42,7 @@ Demo angles and trunk movement are visibly labelled **Simulated data**. Demo mod
 ## What was built during the hackathon
 
 - Five-step responsive experience: welcome, pet selection, calibration, exercise game, summary.
-- Pastel arctic game world with an animated pet, three ice platforms, earned stars, movement meters, and celebration effects.
+- Canvas-rendered arctic expedition with four seeded biomes, shared water/platform physics, parallax scenery, snow, ripples, earned stars, and celebration effects.
 - Validated PNG/JPEG/WebP pet image import (5 MB maximum) with local object URLs; images are not uploaded.
 - Clearly labelled bundled Mochi fallback.
 - MediaPipe Pose Landmarker loaded only after camera opt-in; webcam frames remain local.
@@ -44,10 +51,15 @@ Demo angles and trunk movement are visibly labelled **Simulated data**. Demo mod
 - Deterministic rep state machine with hysteresis, target hold, a complete return phase, and exactly one reward per rep.
 - Typed feedback events: `START`, `TARGET_REACHED`, `TRUNK_DEVIATION`, `TRACKING_LOST`, `REP_COMPLETED`, and `SESSION_COMPLETED`.
 - Browser speech synthesis queue with no overlapping utterances and a mute control.
-- Ghost Mode recording of landmarks, timestamps, and metrics; a prior camera session can be replayed as a translucent reference skeleton.
+- Phase-aware pet animation: anticipate, charge, leap, land, idle, and celebrate. Uploaded photos use the same animated sticker rig.
+- Web Audio ambience and event chimes with a shared mute control alongside queued speech.
+- Ghost Mode segments prior camera recordings into repetitions, selects a strong personal reference, normalizes it to movement phase, and replays a translucent motion trail.
+- Live performance counters for Canvas FPS, average and p95 frame time, particle load, MediaPipe inference time, and dropped camera frames.
+- Development-only `window.__PAWGRESS__` inspection bridge and repeatable scene URLs for reproducing important states.
 - Versioned localStorage session history, comparison, and reset controls.
 - Optional credential-safe Decisions adapter boundary with deterministic local fallback.
-- Unit tests for angle math, missing/low-confidence landmarks, trunk lean, rep transitions, exactly-once rewards, and feedback cooldowns.
+- Vitest coverage for angle math, missing/low-confidence landmarks, trunk lean, rep transitions, exactly-once rewards, feedback cooldowns, simulation determinism, and normalized Ghost Mode.
+- Playwright journeys for the complete challenge, named-scene inspection, and mobile overflow.
 
 ## Pet hatching and sprite assets
 
@@ -59,15 +71,48 @@ The MVP instead supports safe local import of PNG, JPEG, and WebP assets through
 
 ```text
 src/
-  components/          game scene, pet renderer, pose overlay, metrics, progress
+  components/          Canvas renderer, pet/pose overlays, metrics, progress
+  dev/                 development-only inspection bridge
   game/                deterministic feedback and rep state machine
-  services/            voice queue, session storage, optional decision adapter
-  tracking/            MediaPipe lifecycle and pure pose math
+  services/            audio, voice, storage, optional decision adapter
+  simulation/          seeded expedition, animation, water, springs, particles
+  tracking/            MediaPipe lifecycle, pose math, normalized ghost replay
   types.ts             shared domain contracts
   App.tsx              flow orchestration and event boundaries
+e2e/                   real-control and named-scene browser journeys
 ```
 
-The pure math and state machine do not depend on React, MediaPipe, the camera, or the UI. Demo frames and camera frames enter the same `processMotion` boundary.
+The pure motion and expedition simulations do not depend on React, MediaPipe, the camera, or the renderer. Demo frames and camera frames enter the same `processMotion` boundary. The Canvas runs its own animation loop and interpolates visual motion independently from pose inference.
+
+## Continuous game feel
+
+The whole repetition now controls the adventure instead of only its completion event:
+
+| Rep state | Expedition response |
+| --- | --- |
+| Ready | Pet idles and watches the route |
+| Raising | Pet anticipates; the scene charges with spark particles |
+| Target held | Pet launches toward the next stop |
+| Lowering | Pet continues through its jump arc |
+| Reset reached | Water ripples, the platform springs, and one star is awarded |
+| Session complete | The pet celebrates on the island |
+
+The visuals never reward exceeding the selected target, penalize limited range, or change the user's target automatically.
+
+## Repeatable development scenes
+
+In development, append a scene name to the URL:
+
+```text
+/?scene=ready
+/?scene=raising
+/?scene=target-hold
+/?scene=tracking-lost
+/?scene=trunk-feedback
+/?scene=final-leap
+```
+
+The development build also exposes `window.__PAWGRESS__` with `getState()`, `setDemoPose()`, `completeRep()`, and `loadScene()`. This interface is removed from production builds and accepts only typed pose values and named scenes—never arbitrary code.
 
 ## Motion logic
 
@@ -118,7 +163,7 @@ Codex was used to turn the MVP brief into working modules, then validate the res
 
 > “Implement a pure TypeScript shoulder rep state machine with target hold and hysteresis; feed both simulated poses and MediaPipe frames through it; test that lowering below reset awards exactly one rep.”
 
-The resulting tests exercise the same `updateRepState` function used by the live game. Codex also ran the production build and walked the full demo path in a local browser, checking the mobile breakpoint and browser console.
+The resulting tests exercise the same `updateRepState` and `stepExpedition` functions used by the live game. Codex also walked the complete upgraded demo in a local browser, visually inspected the mid-leap Canvas state and target-hold preset, checked the mobile breakpoint, and verified the browser console.
 
 ## 90-second demo video script
 
